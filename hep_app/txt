@@ -1,0 +1,141 @@
+
+
+# Core Pkgs
+from managed_db import *
+import streamlit as st
+
+# EDA Pkgs
+import pandas as pd
+import numpy as np
+
+# Utils
+import os
+import joblib
+import hashlib
+
+# Data Viz Pkgs
+import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+
+
+# Password
+def generate_hashes(password):
+    return hashlib.sha256(str.encode(password)).hexdigest()
+
+
+def verify_hashes(password, hashed_text):
+    if generate_hashes(password) == hashed_text:
+        return hashed_text
+    return False
+
+
+feature_names_best = ['age', 'sex', 'steroid', 'antivirals', 'fatigue', 'spiders', 'ascites',
+                      'varices', 'bilirubin', 'alk_phosphate', 'sgot', 'albumin', 'protime', 'histology']
+
+gender_dict = {"male": 1, "female": 2}
+feature_dict = {"No": 1, "Yes": 2}
+
+
+def get_value(val, my_dict):
+    for key, value in my_dict.items():
+        if val == key:
+            return value
+
+
+def get_key(val, my_dict):
+    for key, value in my_dict.items():
+        if val == key:
+            return key
+
+
+def get_feature_value(val):
+    feature_dict = {"No": 1, "Yes": 2}
+    for key, value in feature_dict.items():
+        if val == key:
+            return value
+
+# Load ML Models
+
+
+def load_model(model_file):
+    loaded_model = joblib.load(open(os.path.join(model_file), "rb"))
+    return loaded_model
+
+
+def main():
+    """Hepatitis Mortality Prediction App"""
+    st.title("Hepatitis Mortality Prediction App")
+
+    menu = ["Home", "Login", "Signup"]
+    sub_menu = ["Plot", "Prediction", 'Metrics']
+
+    choice = st.sidebar.selectbox("Menu", menu)
+
+    if choice == 'Home':
+        st.subheader("Home")
+        st.text("What is Hepatitis?")
+    elif choice == "Signup":
+        st.subheader("{} Page".format(choice))
+        new_username = st.text_input("Username")
+        new_password = st.text_input("Password", type='password')
+        confirm_password = st.text_input(
+            "Confirm Password", type='password')
+
+        if new_password == confirm_password:
+            st.success('Password confirmed')
+        else:
+            st.warning('Passwords not match')
+
+        if st.button("Submit"):
+            create_usertable()
+            hashed_new_password = generate_hashes(new_password)
+            add_userdata(new_username, hashed_new_password)
+            st.success(
+                "You have successfully created a new account")
+            st.info("Login to Get Started")
+    elif choice == "Login":
+        st.subheader("{} Page".format(choice))
+        username = st.sidebar.text_input("Username")
+        password = st.sidebar.text_input("Password", type='password')
+
+        if st.sidebar.button("Login"):
+            create_usertable()
+            hashed_pswd = generate_hashes(password)
+            result = login_user(username, verify_hashes(password, hashed_pswd))
+            if result:
+                # if password == '12345':
+                st.success('Welcome {} 😷'.format(username))
+                activity = st.selectbox('Activity', sub_menu)
+
+                if activity == 'Plot':
+                    st.subheader('Data Viz Plot')
+                    file_name_clean = 'clean_hepatitis_dataset.csv'
+                    st.text(file_name_clean)
+                    df = pd.read_csv('data/'+file_name_clean)
+                    st.dataframe(df)
+
+                    # Freq Dist Plot
+                    file_name_freq = 'freq_df_hepatitis_dataset.csv'
+                    st.text(file_name_freq)
+                    freq_df = pd.read_csv('data/' + file_name_freq)
+                    st.bar_chart(freq_df['count'])
+
+                    if st.checkbox('Area Chart'):
+                        all_columns = df.columns.to_list()
+                        feat_choices = st.multiselect(
+                            'Choose a feature', all_columns)
+                        new_df = df[feat_choices]
+                        st.area_chart(new_df)
+
+                elif activity == 'Prediction':
+                    st.subheader('Predictive Analysis')
+
+                    age = st.numer_input('Age', 1, 100)
+
+            else:
+                st.warning('Incorrect Credentials')
+
+
+if __name__ == '__main__':
+    main()
